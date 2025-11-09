@@ -35,32 +35,60 @@ export default class KimiBot extends Bot {
    * 刷新 Token
    */
   async refreshTokens() {
+    const currentRefreshToken = store.state.kimi?.refresh_token
+
+    if (!currentRefreshToken) {
+      throw new Error('没有 refresh_token，请重新登录')
+    }
+
+    console.log('[Kimi] 正在刷新 token...')
     const refreshUrl = 'https://kimi.moonshot.cn/api/auth/token/refresh'
 
-    const response = await axios.get(refreshUrl, {
-      headers: {
-        Authorization: `Bearer ${store.state.kimi?.refresh_token}`
+    try {
+      const response = await axios.get(refreshUrl, {
+        headers: {
+          Authorization: `Bearer ${currentRefreshToken}`
+        }
+      })
+
+      const newAccessToken = response.data?.access_token
+      const newRefreshToken = response.data?.refresh_token
+
+      if (!newAccessToken || !newRefreshToken) {
+        throw new Error('Token 刷新响应无效')
       }
-    })
 
-    // 更新 store 中的 token
-    store.commit('setKimi', {
-      access_token: response.data?.access_token,
-      refresh_token: response.data?.refresh_token
-    })
+      // 更新 store 中的 token
+      store.commit('setKimi', {
+        access_token: newAccessToken,
+        refresh_token: newRefreshToken
+      })
 
-    return response.data
+      console.log('[Kimi] Token 刷新成功')
+
+      return response.data
+    } catch (error) {
+      console.error('[Kimi] Token 刷新失败:', error.message)
+      throw error
+    }
   }
 
   /**
    * 检查可用性 - 尝试刷新 Token
    */
   async _checkAvailability() {
+    const hasTokens = !!(store.state.kimi?.access_token && store.state.kimi?.refresh_token)
+
+    if (!hasTokens) {
+      console.log('[Kimi] 没有保存的 token')
+      return false
+    }
+
     try {
       await this.refreshTokens()
       return true
     } catch (error) {
-      console.error('Kimi token refresh failed:', error)
+      console.error('[Kimi] Token 刷新失败:', error.message)
       return false
     }
   }

@@ -201,10 +201,41 @@ export default {
 
     // 保存配置
     function saveSettings() {
-      store.commit('setKimi', kimiConfig)
-      store.commit('setGeminiApi', geminiConfig)
+      // 保存 Kimi 配置
+      if (kimiConfig.access_token || kimiConfig.refresh_token) {
+        store.commit('setKimi', {
+          access_token: kimiConfig.access_token.trim(),
+          refresh_token: kimiConfig.refresh_token.trim(),
+          enableSearch: kimiConfig.enableSearch
+        })
+        console.log('[Settings] Kimi 配置已保存')
+      }
+
+      // 保存 Gemini 配置
+      if (geminiConfig.apiKey) {
+        store.commit('setGeminiApi', {
+          ...geminiConfig,
+          apiKey: geminiConfig.apiKey.trim()
+        })
+        console.log('[Settings] Gemini 配置已保存')
+      }
+
+      // 手动触发 localStorage 保存（确保持久化）
+      try {
+        const storeData = {
+          kimi: store.state.kimi,
+          geminiApi: store.state.geminiApi,
+          currentChatId: store.state.currentChatId,
+          selectedBots: store.state.selectedBots
+        }
+        localStorage.setItem('roundtable-ai-store', JSON.stringify(storeData))
+        console.log('[Settings] 配置已手动持久化到 localStorage')
+      } catch (error) {
+        console.error('[Settings] localStorage 保存失败:', error)
+      }
+
       emit('update:modelValue', false)
-      alert('设置已保存')
+      alert('设置已保存！请重新加载页面以确保生效。')
     }
 
     // 测试 Kimi 连接

@@ -1,14 +1,41 @@
 import { createStore } from 'vuex'
 import VuexPersistence from 'vuex-persist'
 
+// 持久化配置
 const vuexLocal = new VuexPersistence({
+  key: 'roundtable-ai-store', // 指定存储的key
   storage: window.localStorage,
   reducer: (state) => ({
     kimi: state.kimi,
     geminiApi: state.geminiApi,
     currentChatId: state.currentChatId,
     selectedBots: state.selectedBots
-  })
+  }),
+  // 在状态恢复后打印日志
+  restoreState: (key, storage) => {
+    const value = storage.getItem(key)
+    if (value) {
+      try {
+        const parsed = JSON.parse(value)
+        console.log('[Store] 恢复状态:', {
+          hasKimiTokens: !!(parsed.kimi?.access_token && parsed.kimi?.refresh_token),
+          hasGeminiKey: !!parsed.geminiApi?.apiKey
+        })
+        return parsed
+      } catch (e) {
+        console.error('[Store] 恢复状态失败:', e)
+      }
+    }
+    return undefined
+  },
+  // 保存状态时打印日志
+  saveState: (key, state, storage) => {
+    console.log('[Store] 保存状态:', {
+      hasKimiTokens: !!(state.kimi?.access_token && state.kimi?.refresh_token),
+      hasGeminiKey: !!state.geminiApi?.apiKey
+    })
+    storage.setItem(key, JSON.stringify(state))
+  }
 })
 
 export default createStore({
@@ -58,6 +85,11 @@ export default createStore({
 
     setKimi(state, data) {
       state.kimi = { ...state.kimi, ...data }
+      console.log('[Store] Kimi 配置已更新:', {
+        hasAccessToken: !!data.access_token,
+        hasRefreshToken: !!data.refresh_token,
+        enableSearch: state.kimi.enableSearch
+      })
     },
 
     setGeminiApi(state, data) {
