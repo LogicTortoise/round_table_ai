@@ -16,13 +16,25 @@
             <h3 class="mb-4">Kimi 配置</h3>
 
             <v-alert type="info" variant="tonal" class="mb-4">
-              请访问 <a href="https://kimi.moonshot.cn/" target="_blank">Kimi</a> 登录后，
-              通过浏览器开发者工具获取 access_token 和 refresh_token
+              点击下方按钮自动登录 Kimi，或手动输入 access_token 和 refresh_token
             </v-alert>
+
+            <v-btn
+              color="primary"
+              @click="openKimiLogin"
+              :loading="loggingIn"
+              class="mb-4"
+              block
+              prepend-icon="mdi-login"
+            >
+              使用 Kimi 账号登录
+            </v-btn>
+
+            <v-divider class="my-4"></v-divider>
 
             <v-text-field
               v-model="kimiConfig.access_token"
-              label="Access Token"
+              label="Access Token（可选，手动输入）"
               type="password"
               variant="outlined"
               density="comfortable"
@@ -145,9 +157,10 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useStore } from 'vuex'
 import { getBotByClassName } from '../bots'
+import { ipcRenderer } from 'electron'
 
 export default {
   name: 'SettingsDialog',
@@ -161,6 +174,7 @@ export default {
   setup(props, { emit }) {
     const store = useStore()
     const tab = ref('kimi')
+    const loggingIn = ref(false)
 
     const kimiConfig = reactive({
       access_token: '',
@@ -238,6 +252,53 @@ export default {
       alert('设置已保存！请重新加载页面以确保生效。')
     }
 
+    // 打开 Kimi 登录窗口
+    async function openKimiLogin() {
+      loggingIn.value = true
+
+      try {
+        console.log('[Settings] Opening Kimi login window...')
+        const tokens = await ipcRenderer.invoke('open-kimi-login')
+
+        if (tokens) {
+          console.log('[Settings] Tokens received, updating config...')
+          // 更新配置
+          kimiConfig.access_token = tokens.access_token
+          kimiConfig.refresh_token = tokens.refresh_token
+
+          // 保存到 store
+          store.commit('setKimi', {
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            enableSearch: kimiConfig.enableSearch
+          })
+
+          // 手动持久化
+          try {
+            const storeData = {
+              kimi: store.state.kimi,
+              geminiApi: store.state.geminiApi,
+              currentChatId: store.state.currentChatId,
+              selectedBots: store.state.selectedBots
+            }
+            localStorage.setItem('roundtable-ai-store', JSON.stringify(storeData))
+            console.log('[Settings] Kimi 登录成功并已保存')
+          } catch (error) {
+            console.error('[Settings] localStorage 保存失败:', error)
+          }
+
+          alert('Kimi 登录成功！')
+        } else {
+          console.log('[Settings] Login cancelled or failed')
+        }
+      } catch (error) {
+        console.error('[Settings] Kimi login error:', error)
+        alert('登录失败：' + error.message)
+      } finally {
+        loggingIn.value = false
+      }
+    }
+
     // 测试 Kimi 连接
     async function testKimi() {
       testing.kimi = true
@@ -301,7 +362,9 @@ export default {
       geminiModels,
       testing,
       testResults,
+      loggingIn,
       saveSettings,
+      openKimiLogin,
       testKimi,
       testGemini
     }

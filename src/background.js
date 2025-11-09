@@ -83,6 +83,69 @@ if (isDevelopment) {
 }
 
 // IPC handlers
+
+// Kimi 登录窗口
+ipcMain.handle('open-kimi-login', async (event) => {
+  const path = require('path')
+
+  // 获取正确的 preload 脚本路径
+  let preloadPath
+  if (isDevelopment) {
+    // 开发模式：使用 src 目录
+    preloadPath = path.join(__dirname, '..', 'src', 'preload', 'kimi-login.js')
+  } else {
+    // 生产模式：使用打包后的路径
+    preloadPath = path.join(__dirname, 'preload', 'kimi-login.js')
+  }
+
+  console.log('[Main] Loading preload script from:', preloadPath)
+
+  const loginWindow = new BrowserWindow({
+    width: 1000,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: preloadPath,
+      webSecurity: false // 允许跨域
+    },
+    title: 'Kimi 登录'
+  })
+
+  // 加载 Kimi 登录页面
+  loginWindow.loadURL('https://kimi.moonshot.cn/')
+
+  return new Promise((resolve, reject) => {
+    // 监听 token 捕获事件
+    const tokenHandler = (event, tokens) => {
+      console.log('[Main] Kimi tokens captured:', {
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token
+      })
+
+      // 发送 token 到渲染进程
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('kimi-tokens-received', tokens)
+      }
+
+      // 关闭登录窗口
+      if (loginWindow && !loginWindow.isDestroyed()) {
+        loginWindow.close()
+      }
+
+      resolve(tokens)
+    }
+
+    ipcMain.once('kimi-tokens-captured', tokenHandler)
+
+    loginWindow.on('closed', () => {
+      ipcMain.removeListener('kimi-tokens-captured', tokenHandler)
+      resolve(null)
+    })
+  })
+})
+
+// 通用登录窗口（保留原有功能）
 ipcMain.handle('open-login-window', async (event, { url }) => {
   const loginWindow = new BrowserWindow({
     width: 800,
