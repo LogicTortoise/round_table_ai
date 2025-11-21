@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './styles.module.css';
+import { agentApi, Agent as BackendAgent } from '../../services/api';
 
 interface Session {
   id: string;
@@ -50,6 +51,7 @@ const MainWorkbench: React.FC = () => {
     { id: 'agent-2', name: '代码评审助手', model: 'Claude 3', icon: 'shield-alt', color: 'green', isActive: true },
     { id: 'agent-3', name: '文档总结助手', model: 'Gemini Pro', icon: 'file-alt', color: 'purple', isActive: true }
   ]);
+  const [availableAgents, setAvailableAgents] = useState<BackendAgent[]>([]);
   const [agentMessages, setAgentMessages] = useState<Record<string, Message[]>>({
     'agent-1': [
       { id: 'msg-1', content: '请帮我生成一个Python的Web爬虫', isUser: true, timestamp: new Date() },
@@ -70,6 +72,19 @@ const MainWorkbench: React.FC = () => {
     const originalTitle = document.title;
     document.title = 'RoundTable AI - 主工作台';
     return () => { document.title = originalTitle; };
+  }, []);
+
+  // 获取后端 Agent 列表
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const { agents } = await agentApi.getAll();
+        setAvailableAgents(agents);
+      } catch (error) {
+        console.error('Failed to load agents:', error);
+      }
+    };
+    loadAgents();
   }, []);
 
   // 处理会话切换
@@ -235,6 +250,17 @@ const MainWorkbench: React.FC = () => {
       newSelectedAgents.delete(agentId);
     }
     setSelectedAgents(newSelectedAgents);
+  };
+
+  // Agent 图标映射
+  const getAgentIcon = (agentId: string): { icon: string; color: string } => {
+    const iconMap: Record<string, { icon: string; color: string }> = {
+      'kimi': { icon: 'moon', color: 'blue' },
+      'chatgpt': { icon: 'robot', color: 'green' },
+      'claude': { icon: 'shield-alt', color: 'cyan' },
+      'deepseek': { icon: 'brain', color: 'purple' }
+    };
+    return iconMap[agentId] || { icon: 'cog', color: 'gray' };
   };
 
   // 处理插入代码
@@ -628,29 +654,49 @@ const MainWorkbench: React.FC = () => {
                 <h3 className="text-lg font-semibold text-primary">选择Agent</h3>
               </div>
               <div className="p-6">
-                <div className="space-y-3">
-                  {[
-                    { id: 'agent-1', name: '代码生成助手', model: 'GPT-4', icon: 'code', color: 'blue' },
-                    { id: 'agent-2', name: '代码评审助手', model: 'Claude 3', icon: 'shield-alt', color: 'green' },
-                    { id: 'agent-3', name: '文档总结助手', model: 'Gemini Pro', icon: 'file-alt', color: 'purple' },
-                    { id: 'agent-4', name: '创意助手', model: 'GPT-3.5', icon: 'lightbulb', color: 'orange' }
-                  ].map((agentOption) => (
-                    <label key={agentOption.id} className="flex items-center space-x-3">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedAgents.has(agentOption.id)}
-                        onChange={(e) => handleAgentSelect(agentOption.id, e.target.checked)}
-                        className="rounded border-border text-primary focus:ring-primary"
-                      />
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-6 h-6 bg-${agentOption.color}-100 rounded flex items-center justify-center`}>
-                          <i className={`fas fa-${agentOption.icon} text-${agentOption.color}-600 text-xs`}></i>
-                        </div>
-                        <span className="text-sm text-primary">{agentOption.name} ({agentOption.model})</span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                {availableAgents.length === 0 ? (
+                  <div className="text-center py-8 text-secondary">
+                    <i className="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p className="text-sm">加载 Agent 列表中...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {availableAgents.map((agentOption) => {
+                      const { icon, color } = getAgentIcon(agentOption.id);
+                      const isDisabled = !agentOption.isLoggedIn || !agentOption.isAvailable;
+
+                      return (
+                        <label
+                          key={agentOption.id}
+                          className={`flex items-center space-x-3 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          title={isDisabled ? '请先在 Agent 管理页面登录此 Agent' : ''}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedAgents.has(agentOption.id)}
+                            onChange={(e) => handleAgentSelect(agentOption.id, e.target.checked)}
+                            disabled={isDisabled}
+                            className="rounded border-border text-primary focus:ring-primary"
+                          />
+                          <div className="flex items-center space-x-2 flex-1">
+                            <div className={`w-6 h-6 bg-${color}-100 rounded flex items-center justify-center`}>
+                              <i className={`fas fa-${icon} text-${color}-600 text-xs`}></i>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-primary">{agentOption.name}</span>
+                                {!agentOption.isLoggedIn && (
+                                  <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-xs rounded">未登录</span>
+                                )}
+                              </div>
+                              <span className="text-xs text-secondary">{agentOption.id}</span>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="px-6 py-4 border-t border-border flex justify-end space-x-3">
                 <button 
