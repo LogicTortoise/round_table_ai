@@ -5,6 +5,7 @@ import P_main_workbench from '../pages/p-main_workbench';
 import P_agent_management from '../pages/p-agent_management';
 import P_session_history from '../pages/p-session_history';
 import P_system_settings from '../pages/p-system_settings';
+import ApiTest from '../components/ApiTest';
 import NotFoundPage from './NotFoundPage';
 import ErrorPage from './ErrorPage';
 
@@ -46,6 +47,15 @@ const router = createBrowserRouter([
     element: (
       <ErrorBoundary>
         <P_system_settings />
+      </ErrorBoundary>
+    ),
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: '/api-test',
+    element: (
+      <ErrorBoundary>
+        <ApiTest />
       </ErrorBoundary>
     ),
     errorElement: <ErrorPage />,

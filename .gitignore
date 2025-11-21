@@ -3,7 +3,18 @@ node_modules
 /dist
 /dist_electron
 
+# Backend
+/server/node_modules
+/server/dist
+/server/data
+/server/.env
+
+# Test results
+api-test-result.png
+test-api.mjs
+
 # local env files
+.env
 .env.local
 .env.*.local
 
