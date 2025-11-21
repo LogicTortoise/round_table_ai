@@ -11,6 +11,10 @@ import ErrorPage from './ErrorPage';
 // 使用 createBrowserRouter 创建路由实例
 const router = createBrowserRouter([
   {
+    path: '/',
+    element: <Navigate to="/main-workbench" replace />,
+  },
+  {
     path: '/main-workbench',
     element: (
       <ErrorBoundary>
