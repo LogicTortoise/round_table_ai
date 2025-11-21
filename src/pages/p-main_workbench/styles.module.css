@@ -1,0 +1,85 @@
+
+
+.pageWrapper {
+  background-color: #F9FAFB;
+  min-height: 100vh;
+}
+
+.chatScrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chatScrollbar::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 3px;
+}
+
+.chatScrollbar::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 3px;
+}
+
+.chatScrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+.agentCardHover {
+  transition: all 0.2s ease-in-out;
+}
+
+.agentCardHover:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.sessionItemActive {
+  background-color: #F3F4F6;
+  border-left: 3px solid #1F2937;
+}
+
+.navLinkActive {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+.inputFocus:focus {
+  outline: none;
+  border-color: #1F2937;
+  box-shadow: 0 0 0 3px rgba(31, 41, 55, 0.1);
+}
+
+.codeBlock {
+  background-color: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  overflow-x: auto;
+}
+
+.messageUser {
+  background-color: #1F2937;
+  color: white;
+  border-radius: 12px 12px 4px 12px;
+}
+
+.messageAgent {
+  background-color: #F3F4F6;
+  color: #1F2937;
+  border-radius: 12px 12px 12px 4px;
+}
+
+.agentLoading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+

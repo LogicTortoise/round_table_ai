@@ -1,99 +1,69 @@
-# RoundTable AI
+# React + TypeScript + Vite
 
-与多个 AI 助手同时对话的 Mac 桌面应用
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 功能特性
+Currently, two official plugins are available:
 
-- ✅ 同时与多个 AI 对话
-- ✅ 支持 Kimi (月之暗面)
-- ✅ 支持 Gemini API
-- ✅ 会话历史持久化
-- ✅ 流式响应
-- ✅ 对话窗口可配置
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## 技术栈
+## Expanding the ESLint configuration
 
-- Vue 3 + Composition API
-- Vuetify 3 (Material Design)
-- Electron
-- Vuex + vuex-persist
-- Dexie (IndexedDB)
-- LangChain
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-## 项目结构
+```js
+export default tseslint.config([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-```
-round_table_ai/
-├── src/
-│   ├── bots/              # AI Bot 实现
-│   │   ├── Bot.js         # Bot 基类
-│   │   ├── KimiBot.js     # Kimi 实现
-│   │   ├── LangChainBot.js
-│   │   ├── GeminiAPIBot.js
-│   │   └── index.js
-│   ├── components/        # Vue 组件
-│   │   ├── ChatView.vue
-│   │   ├── BotCard.vue
-│   │   └── SettingsDialog.vue
-│   ├── store/             # 状态管理
-│   │   ├── index.js       # Vuex store
-│   │   └── database.js    # Dexie 数据库
-│   ├── plugins/
-│   │   └── vuetify.js
-│   ├── App.vue
-│   ├── main.js
-│   └── background.js      # Electron 主进程
-├── public/
-├── package.json
-└── vue.config.js
+      // Remove tseslint.configs.recommended and replace with this
+      ...tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      ...tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      ...tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-## 开发
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-### 安装依赖
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-```bash
-npm install
+export default tseslint.config([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-### 开发模式
-
-```bash
-npm run electron:serve
-```
-
-### 构建 Mac 应用
-
-```bash
-npm run electron:build
-```
-
-## 配置
-
-### Kimi 配置
-
-1. 访问 https://kimi.moonshot.cn/
-2. 登录账号
-3. 打开浏览器开发者工具 (F12)
-4. 在 Network 标签中找到任意请求
-5. 复制请求头中的 Authorization 字段（Bearer 后面的部分）
-6. 将 access_token 和 refresh_token 填入设置
-
-### Gemini 配置
-
-1. 访问 https://aistudio.google.com/app/apikey
-2. 创建 API Key
-3. 将 API Key 填入设置
-
-## 使用说明
-
-1. 启动应用
-2. 点击右上角设置按钮配置 AI 服务
-3. 点击左侧"新建会话"创建对话
-4. 在右侧面板添加/移除 Agent
-5. 在底部输入框输入消息，按 Ctrl+Enter 发送
-6. 消息会同时发送给所有选中的 Agent
-
-## License
-
-MIT
