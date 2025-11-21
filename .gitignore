@@ -11,7 +11,9 @@ node_modules
 
 # Test results
 api-test-result.png
+agent-management-test.png
 test-api.mjs
+test-agent-management.mjs
 
 # local env files
 .env

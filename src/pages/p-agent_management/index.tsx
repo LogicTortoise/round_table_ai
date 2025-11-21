@@ -3,17 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styles from './styles.module.css';
+import { agentApi, Agent } from '../../services/api';
 
 interface AgentData {
   id: string;
   name: string;
-  type: 'gpt' | 'claude' | 'gemini' | 'custom';
+  type: 'kimi' | 'chatgpt' | 'claude' | 'deepseek' | 'gpt' | 'gemini' | 'custom';
   typeName: string;
   description: string;
   status: 'active' | 'disabled';
   model: string;
   createdAt: string;
   rolePrompt: string;
+  category: 'official' | 'custom'; // 官方聊天助手 or 自定义Agent
+  isBackendAgent?: boolean; // 标记是否为后端Agent
+  isLoggedIn?: boolean; // 登录状态
+  loginUrl?: string; // 登录URL
   temperature?: number;
   maxTokens?: number;
 }
@@ -32,8 +37,9 @@ interface FormData {
 const AgentManagementPage: React.FC = () => {
   const navigate = useNavigate();
   
-  // 模拟Agent数据
+  // Agent数据（包含后端和本地）
   const [agentsData, setAgentsData] = useState<AgentData[]>([
+    // 自定义Agent（示例数据）
     {
       id: 'agent-001',
       name: '代码生成助手',
@@ -43,21 +49,11 @@ const AgentManagementPage: React.FC = () => {
       status: 'active',
       model: 'GPT-4',
       createdAt: '2024-01-10 14:30',
-      rolePrompt: '你是一个专业的代码生成助手，精通各种编程语言和框架，能够生成高质量、可维护的代码。'
+      rolePrompt: '你是一个专业的代码生成助手，精通各种编程语言和框架，能够生成高质量、可维护的代码。',
+      category: 'custom'
     },
     {
       id: 'agent-002',
-      name: '代码评审助手',
-      type: 'claude',
-      typeName: 'Claude系列',
-      description: '代码质量检查和安全性评审专家',
-      status: 'active',
-      model: 'Claude 3 Opus',
-      createdAt: '2024-01-08 09:15',
-      rolePrompt: '你是一个严格的代码评审专家，专注于代码质量、安全性和最佳实践。'
-    },
-    {
-      id: 'agent-003',
       name: '文档总结助手',
       type: 'gemini',
       typeName: 'Gemini系列',
@@ -65,42 +61,13 @@ const AgentManagementPage: React.FC = () => {
       status: 'active',
       model: 'Gemini Pro',
       createdAt: '2024-01-05 16:45',
-      rolePrompt: '你是一个高效的文档分析专家，能够快速理解复杂文档并生成清晰的总结。'
-    },
-    {
-      id: 'agent-004',
-      name: '创意写作助手',
-      type: 'gpt',
-      typeName: 'GPT系列',
-      description: '创意文案和内容生成专家',
-      status: 'disabled',
-      model: 'GPT-3.5 Turbo',
-      createdAt: '2024-01-03 11:20',
-      rolePrompt: '你是一个富有创意的写作专家，擅长生成吸引人的文案和内容。'
-    },
-    {
-      id: 'agent-005',
-      name: '数据分析助手',
-      type: 'claude',
-      typeName: 'Claude系列',
-      description: '专业的数据分析和可视化专家',
-      status: 'active',
-      model: 'Claude 3 Sonnet',
-      createdAt: '2023-12-28 13:10',
-      rolePrompt: '你是一个专业的数据分析师，擅长处理和解释复杂的数据集。'
-    },
-    {
-      id: 'agent-006',
-      name: '自定义API助手',
-      type: 'custom',
-      typeName: '自定义API',
-      description: '用户自定义的AI接口',
-      status: 'disabled',
-      model: 'Custom Model',
-      createdAt: '2023-12-25 10:30',
-      rolePrompt: '这是一个用户自定义的AI助手。'
+      rolePrompt: '你是一个高效的文档分析专家，能够快速理解复杂文档并生成清晰的总结。',
+      category: 'custom'
     }
   ]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [currentAgents, setCurrentAgents] = useState<AgentData[]>([...agentsData]);
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
@@ -130,10 +97,70 @@ const AgentManagementPage: React.FC = () => {
     return () => { document.title = originalTitle; };
   }, []);
 
+  // 获取后端Agent数据
+  useEffect(() => {
+    loadBackendAgents();
+  }, []);
+
   // 应用筛选和排序
   useEffect(() => {
     applyFiltersAndSorting();
-  }, [agentSearchTerm, typeFilter, statusFilter, sortField, sortDirection]);
+  }, [agentsData, agentSearchTerm, typeFilter, statusFilter, sortField, sortDirection]);
+
+  // 加载后端Agent
+  const loadBackendAgents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { agents } = await agentApi.getAll();
+
+      // 将后端Agent转换为前端AgentData格式
+      const backendAgents: AgentData[] = agents.map(agent => {
+        const agentDescriptions: Record<string, string> = {
+          kimi: 'Moonshot AI 开发的智能助手，支持长文本对话和搜索增强',
+          chatgpt: 'OpenAI 开发的 ChatGPT，业界领先的对话 AI 模型',
+          claude: 'Anthropic 开发的 Claude，擅长复杂推理和代码分析',
+          deepseek: 'DeepSeek 开发的 AI 助手，支持 Thinking 思考模式'
+        };
+
+        const agentModels: Record<string, string> = {
+          kimi: 'Moonshot',
+          chatgpt: 'GPT-4',
+          claude: 'Claude 3',
+          deepseek: 'DeepSeek V2'
+        };
+
+        return {
+          id: agent.id,
+          name: agent.name,
+          type: agent.id as 'kimi' | 'chatgpt' | 'claude' | 'deepseek',
+          typeName: agent.name,
+          description: agentDescriptions[agent.id] || '官方 AI 聊天助手',
+          status: agent.isAvailable ? 'active' : 'disabled',
+          model: agentModels[agent.id] || 'Unknown',
+          createdAt: new Date().toLocaleString('zh-CN'),
+          rolePrompt: `${agent.name} 官方助手`,
+          category: 'official',
+          isBackendAgent: true,
+          isLoggedIn: agent.isLoggedIn,
+          loginUrl: agent.loginUrl
+        };
+      });
+
+      // 合并后端Agent和本地自定义Agent
+      setAgentsData(prev => {
+        // 过滤掉原有的后端Agent，保留自定义Agent
+        const customAgents = prev.filter(a => a.category === 'custom');
+        return [...backendAgents, ...customAgents];
+      });
+
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to load backend agents:', err);
+      setError('加载 Agent 数据失败，请检查后端服务是否运行');
+      setLoading(false);
+    }
+  };
 
   const applyFiltersAndSorting = () => {
     let filteredAgents = agentsData.filter(agent => {
@@ -302,8 +329,11 @@ const AgentManagementPage: React.FC = () => {
 
   const getTypeBadgeClass = (type: string) => {
     const classes = {
-      'gpt': styles.typeBadgeGpt,
+      'kimi': styles.typeBadgeGpt,
+      'chatgpt': styles.typeBadgeGpt,
       'claude': styles.typeBadgeClaude,
+      'deepseek': styles.typeBadgeGemini,
+      'gpt': styles.typeBadgeGpt,
       'gemini': styles.typeBadgeGemini,
       'custom': styles.typeBadgeCustom
     };
@@ -312,8 +342,11 @@ const AgentManagementPage: React.FC = () => {
 
   const getTypeIcon = (type: string) => {
     const icons = {
-      'gpt': <i className="fas fa-robot text-blue-600 text-sm"></i>,
+      'kimi': <i className="fas fa-moon text-blue-600 text-sm"></i>,
+      'chatgpt': <i className="fas fa-robot text-green-600 text-sm"></i>,
       'claude': <i className="fas fa-shield-alt text-cyan-600 text-sm"></i>,
+      'deepseek': <i className="fas fa-brain text-purple-600 text-sm"></i>,
+      'gpt': <i className="fas fa-robot text-blue-600 text-sm"></i>,
       'gemini': <i className="fas fa-brain text-purple-600 text-sm"></i>,
       'custom': <i className="fas fa-cog text-orange-600 text-sm"></i>
     };
@@ -503,16 +536,23 @@ const AgentManagementPage: React.FC = () => {
                 </div>
                 
                 {/* 类型筛选 */}
-                <select 
+                <select
                   value={typeFilter}
                   onChange={handleTypeFilterChange}
                   className={`px-3 py-2 bg-bgLight border border-border rounded-lg text-sm ${styles.inputFocus}`}
                 >
                   <option value="">所有类型</option>
-                  <option value="gpt">GPT系列</option>
-                  <option value="claude">Claude系列</option>
-                  <option value="gemini">Gemini系列</option>
-                  <option value="custom">自定义API</option>
+                  <optgroup label="官方聊天助手">
+                    <option value="kimi">Kimi</option>
+                    <option value="chatgpt">ChatGPT</option>
+                    <option value="claude">Claude</option>
+                    <option value="deepseek">DeepSeek</option>
+                  </optgroup>
+                  <optgroup label="自定义Agent">
+                    <option value="gpt">GPT系列</option>
+                    <option value="gemini">Gemini系列</option>
+                    <option value="custom">自定义API</option>
+                  </optgroup>
                 </select>
                 
                 {/* 状态筛选 */}
@@ -546,8 +586,34 @@ const AgentManagementPage: React.FC = () => {
 
           {/* Agent列表内容区 */}
           <div className="flex-1 overflow-y-auto p-6">
+            {/* 加载状态 */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <i className="fas fa-spinner fa-spin text-3xl text-primary mb-3"></i>
+                  <p className="text-sm text-secondary">加载 Agent 数据中...</p>
+                </div>
+              </div>
+            )}
+
+            {/* 错误状态 */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center space-x-2">
+                  <i className="fas fa-exclamation-circle text-red-500"></i>
+                  <span className="text-sm text-red-700">{error}</span>
+                  <button
+                    onClick={loadBackendAgents}
+                    className="ml-auto text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    重试
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* 表格视图 */}
-            {currentView === 'table' && (
+            {!loading && currentView === 'table' && (
               <div className="bg-cardBg rounded-card shadow-card overflow-hidden">
                 <table className="w-full">
                   <thead className="bg-bgLight border-b border-border">
@@ -615,42 +681,76 @@ const AgentManagementPage: React.FC = () => {
                           <div className="text-sm text-secondary line-clamp-2 max-w-xs">{agent.description}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium ${agent.status === 'active' ? styles.statusBadgeActive : styles.statusBadgeDisabled} rounded-full`}>
-                            {agent.status === 'active' ? '启用' : '禁用'}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 text-xs font-medium ${agent.status === 'active' ? styles.statusBadgeActive : styles.statusBadgeDisabled} rounded-full`}>
+                              {agent.status === 'active' ? '启用' : '禁用'}
+                            </span>
+                            {agent.isBackendAgent && (
+                              <span className={`px-2 py-1 text-xs font-medium ${agent.isLoggedIn ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} rounded-full`}>
+                                {agent.isLoggedIn ? '已登录' : '未登录'}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
                           {agent.createdAt}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button 
-                            onClick={() => handleEditAgent(agent.id)}
-                            className="text-primary hover:text-opacity-80 transition-colors" 
-                            title="编辑"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button 
-                            onClick={() => handleCopyAgent(agent.id)}
-                            className="text-secondary hover:text-primary transition-colors" 
-                            title="复制"
-                          >
-                            <i className="fas fa-copy"></i>
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteAgent(agent.id)}
-                            className="text-secondary hover:text-danger transition-colors" 
-                            title="删除"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                          <button 
-                            onClick={() => handleToggleAgentStatus(agent.id)}
-                            className="text-secondary hover:text-primary transition-colors" 
-                            title={agent.status === 'active' ? '禁用' : '启用'}
-                          >
-                            <i className="fas fa-power-off"></i>
-                          </button>
+                          {agent.isBackendAgent ? (
+                            // 后端Agent操作按钮
+                            <>
+                              {!agent.isLoggedIn && agent.loginUrl && (
+                                <a
+                                  href={agent.loginUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:text-opacity-80 transition-colors"
+                                  title="登录"
+                                >
+                                  <i className="fas fa-sign-in-alt"></i>
+                                </a>
+                              )}
+                              <button
+                                onClick={() => loadBackendAgents()}
+                                className="text-secondary hover:text-primary transition-colors"
+                                title="刷新状态"
+                              >
+                                <i className="fas fa-sync-alt"></i>
+                              </button>
+                            </>
+                          ) : (
+                            // 自定义Agent操作按钮
+                            <>
+                              <button
+                                onClick={() => handleEditAgent(agent.id)}
+                                className="text-primary hover:text-opacity-80 transition-colors"
+                                title="编辑"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              <button
+                                onClick={() => handleCopyAgent(agent.id)}
+                                className="text-secondary hover:text-primary transition-colors"
+                                title="复制"
+                              >
+                                <i className="fas fa-copy"></i>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAgent(agent.id)}
+                                className="text-secondary hover:text-danger transition-colors"
+                                title="删除"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                              <button
+                                onClick={() => handleToggleAgentStatus(agent.id)}
+                                className="text-secondary hover:text-primary transition-colors"
+                                title={agent.status === 'active' ? '禁用' : '启用'}
+                              >
+                                <i className="fas fa-power-off"></i>
+                              </button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -660,7 +760,7 @@ const AgentManagementPage: React.FC = () => {
             )}
 
             {/* 卡片视图 */}
-            {currentView === 'card' && (
+            {!loading && currentView === 'card' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {currentAgents.map(agent => (
                   <div key={agent.id} className="bg-cardBg rounded-card shadow-card p-6 hover:shadow-hover transition-all">
@@ -676,43 +776,79 @@ const AgentManagementPage: React.FC = () => {
                         {agent.status === 'active' ? '启用' : '禁用'}
                       </span>
                     </div>
-                    
+
                     <p className="text-sm text-secondary mb-4 line-clamp-3">{agent.description}</p>
-                    
-                    <div className="flex items-center justify-between text-xs text-secondary mb-4">
-                      <span>创建时间: {agent.createdAt}</span>
-                      <span className={`px-2 py-1 ${getTypeBadgeClass(agent.type)} rounded-full`}>{agent.typeName}</span>
+
+                    <div className="flex items-center justify-between text-xs mb-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-secondary">创建时间: {agent.createdAt.split(' ')[0]}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 ${getTypeBadgeClass(agent.type)} rounded-full`}>{agent.typeName}</span>
+                        {agent.isBackendAgent && (
+                          <span className={`px-2 py-1 font-medium ${agent.isLoggedIn ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} rounded-full`}>
+                            {agent.isLoggedIn ? '已登录' : '未登录'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-end space-x-2">
-                      <button 
-                        onClick={() => handleEditAgent(agent.id)}
-                        className="p-2 text-primary hover:text-opacity-80 transition-colors" 
-                        title="编辑"
-                      >
-                        <i className="fas fa-edit"></i>
-                      </button>
-                      <button 
-                        onClick={() => handleCopyAgent(agent.id)}
-                        className="p-2 text-secondary hover:text-primary transition-colors" 
-                        title="复制"
-                      >
-                        <i className="fas fa-copy"></i>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteAgent(agent.id)}
-                        className="p-2 text-secondary hover:text-danger transition-colors" 
-                        title="删除"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
-                      <button 
-                        onClick={() => handleToggleAgentStatus(agent.id)}
-                        className="p-2 text-secondary hover:text-primary transition-colors" 
-                        title={agent.status === 'active' ? '禁用' : '启用'}
-                      >
-                        <i className="fas fa-power-off"></i>
-                      </button>
+                      {agent.isBackendAgent ? (
+                        // 后端Agent操作按钮
+                        <>
+                          {!agent.isLoggedIn && agent.loginUrl && (
+                            <a
+                              href={agent.loginUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-primary hover:text-opacity-80 transition-colors"
+                              title="登录"
+                            >
+                              <i className="fas fa-sign-in-alt"></i>
+                            </a>
+                          )}
+                          <button
+                            onClick={() => loadBackendAgents()}
+                            className="p-2 text-secondary hover:text-primary transition-colors"
+                            title="刷新状态"
+                          >
+                            <i className="fas fa-sync-alt"></i>
+                          </button>
+                        </>
+                      ) : (
+                        // 自定义Agent操作按钮
+                        <>
+                          <button
+                            onClick={() => handleEditAgent(agent.id)}
+                            className="p-2 text-primary hover:text-opacity-80 transition-colors"
+                            title="编辑"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={() => handleCopyAgent(agent.id)}
+                            className="p-2 text-secondary hover:text-primary transition-colors"
+                            title="复制"
+                          >
+                            <i className="fas fa-copy"></i>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAgent(agent.id)}
+                            className="p-2 text-secondary hover:text-danger transition-colors"
+                            title="删除"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                          <button
+                            onClick={() => handleToggleAgentStatus(agent.id)}
+                            className="p-2 text-secondary hover:text-primary transition-colors"
+                            title={agent.status === 'active' ? '禁用' : '启用'}
+                          >
+                            <i className="fas fa-power-off"></i>
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
